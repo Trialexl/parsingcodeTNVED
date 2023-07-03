@@ -98,23 +98,23 @@ def CheckExistFileName(filename,number_of_occurrences = 0):
 def FixBadCode():
     pagecount = 2
     dfproduct = pd.DataFrame(columns=['Code', 'label'])
-    dfBadCodes = CreateDictBadCodes(startinterval= 120, endinterval= 140)
+    dfBadCodes = CreateDictBadCodes(startinterval= 0, endinterval= 300)
     for badcode in dfBadCodes.itertuples():
-        SavePage_on_Code(code=badcode.id, pagecount=pagecount)
-        #  ParsingHTMLFile(code=badcode.id, dfproduct=dfproduct, pagecount=pagecount)
+        # SavePage_on_Code(code=badcode.id, pagecount=pagecount)
+        ParsingHTMLFile(code=badcode.id, dfproduct=dfproduct, pagecount=pagecount)
     
     # SavePage_on_Code(code='0802320000',pagecount=5)
-    # ParsingHTMLFile(code='0802320000', dfproduct=dfproduct, pagecount=5)
+    ParsingHTMLFile(code='0802320000', dfproduct=dfproduct, pagecount=5)
     # SavePage_on_Code(code='0802310000',pagecount=5)
-    # ParsingHTMLFile(code='0802310000', dfproduct=dfproduct, pagecount=5)
+    ParsingHTMLFile(code='0802310000', dfproduct=dfproduct, pagecount=5)
     
     filename = 'ParsedData.csv'
     filename = CheckExistFileName(filename)
     dfproduct.to_csv(filename,sep=';',index=False,header=False)
 
 
-FixBadCode()
-# SavePage_on_Code(code='3920202900', pagecount=2)
+# FixBadCode()
+SavePage_on_Code(code='5208330000', pagecount=2)
         
 print('done')
 
