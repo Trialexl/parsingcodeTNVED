@@ -37,10 +37,9 @@ def GetDescrFromTnved_Info(Code):
     
     response = requests.request("POST", url, headers=headers, data=payload)
     src = response.text
-    with open(filename,'w') as file:
+    with open(filename,'w',encoding="utf-8") as file:
         file.write(src)
     print(filename)
-
 
 def GetInfoFromJSONFile(code,dfproduct):
     """
@@ -53,20 +52,26 @@ def GetInfoFromJSONFile(code,dfproduct):
     dfproduct : Dataframe для заполнения данных 
 
     """
+    filename = f'FilesJson/{code}.json'
+    print(filename)
     
-    filename = f'Files/{code}.json'
     if not os.path.exists(filename):
         print(f'{code}  файл не найден')
         return
         
-    with open(filename) as file:
-        src = file.read()
+    with open(filename,encoding='windows-1251') as file:
+        src = json.load(file)
+     
+    if src['similar'] == None:
+        print(f'{code}  нет данных')
+        return
     
+    for children in src['similar']: 
+        dfproduct.loc[len(dfproduct.index)] = [code, children]   
+
         
-
-    
-
-
+    # codeobj = src['resultWithDescription'] [0]
+    # dfproduct.loc[len(dfproduct.index)] = [code, codeobj['description'],codeobj['endDate']]   
 
 
 def SavePage_on_Code(code, pagecount):
@@ -93,8 +98,10 @@ def SavePage_on_Code(code, pagecount):
                 }
         payload = {}
         headers = {}
-        response = requests.request("GET", url, headers=headers, params=params)
+        if os.path.isfile(filename):
+            return
         time.sleep(3)
+        response = requests.request("GET", url, headers=headers, params=params)
         src = response.text
         # src = 'test'
 
@@ -102,7 +109,6 @@ def SavePage_on_Code(code, pagecount):
         with open(filename,'w') as file:
             file.write(src)
         print(filename)
-
 
 def CreateDictBadCodes(endinterval, startinterval = 0):
     """
@@ -174,7 +180,8 @@ def FixBadCode():
     for badcode in dfBadCodes.itertuples():
         count += 1
         print (count)
-        GetDescrFromTnved_Info(badcode.id)
+        # GetDescrFromTnved_Info(badcode.id)
+        GetInfoFromJSONFile(code=badcode.id, dfproduct=dfproduct)
         # SavePage_on_Code(code=badcode.id, pagecount=pagecount)
         # ParsingHTMLFile(code=badcode.id, dfproduct=dfproduct, pagecount=pagecount)
     
@@ -183,7 +190,7 @@ def FixBadCode():
     # SavePage_on_Code(code='0802310000',pagecount=5)
     # ParsingHTMLFile(code='0802310000', dfproduct=dfproduct, pagecount=5)
     
-    filename = 'ParsedData.csv'
+    filename = 'Similar.csv'
     filename = CheckExistFileName(filename)
     dfproduct.to_csv(filename,sep=';',index=False,header=False)
 
