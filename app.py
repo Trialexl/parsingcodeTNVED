@@ -3,14 +3,75 @@ import time
 import pandas as pd
 import os
 from bs4 import BeautifulSoup
+import json
 
+
+
+
+
+def GetDescrFromTnved_Info(Code): 
+    """
+    По API api.tnved.info получаем json и сохраняем в файл 
+    
+    Parameters
+    ----------
+    code : Код ТНВЭД
+
+    """
+    url = "https://api.tnved.info/api/Search/Search"
+
+    payload = json.dumps({
+    "query": Code
+    })
+    headers = {
+    'Content-Type': 'application/json'
+    }
+
+    directory = 'FilesJson'
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    filename =f'{directory}/{Code}.json'
+    if os.path.isfile(filename):
+        return
+    time.sleep(3)
+    
+    response = requests.request("POST", url, headers=headers, data=payload)
+    src = response.text
+    with open(filename,'w') as file:
+        file.write(src)
+    print(filename)
+
+
+def GetInfoFromJSONFile(code,dfproduct):
+    """
+    После сохранения json файлов через GetDescrFromTnved_Info(), 
+    заполняет dfproduct
+    
+    Parameters
+    ----------
+    code : Код ТНВЭД
+    dfproduct : Dataframe для заполнения данных 
+
+    """
+    
+    filename = f'Files/{code}.json'
+    if not os.path.exists(filename):
+        print(f'{code}  файл не найден')
+        return
+        
+    with open(filename) as file:
+        src = file.read()
+    
+        
+
+    
 
 
 
 
 def SavePage_on_Code(code, pagecount):
     """
-    Сохраняет указанное кол-во страниц с сайта по указанному коду 
+    Сохраняет указанное кол-во страниц с сайта ifcg.ru по указанному коду 
 
     Parameters
     ----------
@@ -18,21 +79,22 @@ def SavePage_on_Code(code, pagecount):
     :pagecount: Кол-во необходимых страниц
     
     """
+    shiftindex = 1
     url = "https://www.ifcg.ru/kb/tnved/search/"
     directory = 'Files'
     if not os.path.exists(directory):
         os.makedirs(directory)
     for pagenumber in range(pagecount):
-        filename =f'{directory}/{code}_{pagenumber+1}.html'
+        filename =f'{directory}/{code}_{pagenumber+shiftindex}.html'
         params = {
                 'q':code,
-                'sp': pagenumber+1,
+                'sp': pagenumber+shiftindex,
                 's': 'stat'
                 }
         payload = {}
         headers = {}
         response = requests.request("GET", url, headers=headers, params=params)
-        time.sleep(5)
+        time.sleep(3)
         src = response.text
         # src = 'test'
 
@@ -41,10 +103,10 @@ def SavePage_on_Code(code, pagecount):
             file.write(src)
         print(filename)
 
+
 def CreateDictBadCodes(endinterval, startinterval = 0):
     """
     Создает Dataframe  с кодами, которые плохо представлены в датасете
-    (меньше 10 записей).
     
 
     Parameters
@@ -55,12 +117,13 @@ def CreateDictBadCodes(endinterval, startinterval = 0):
     
     """
     df = pd.read_csv('tnveds_sort.csv',sep=';',names=['id', 'label'], dtype = {'id': str, 'label': int})
-    dfBadCodes = df[df['label']<10][startinterval:endinterval]
+    dfBadCodes = df[startinterval:endinterval]
     return dfBadCodes
 
 def ParsingHTMLFile(code,dfproduct,pagecount = 1):
     """
-    Парсит страницу и заполняент данные в Dataframe
+    После SavePage_on_Code(), парсит сохраненные в файл страницу,
+    с сайта ifcg.ru и заполняент данные в Dataframe.
     
     Parameters
     ----------
@@ -70,7 +133,13 @@ def ParsingHTMLFile(code,dfproduct,pagecount = 1):
     """
     
     for pagenumber in range(pagecount):
-        with open(f'Files/{code}_{pagenumber+1}.html') as file:
+        filename = f'Files/{code}_{pagenumber+1}.html'
+        if not os.path.exists(filename):
+            print(f'{code}  файл не найден')
+            return
+            # SavePage_on_Code(code=code, pagecount=pagecount)
+            # ParsingHTMLFile(code,dfproduct,pagecount)           
+        with open(filename) as file:
             src = file.read()
         soup = BeautifulSoup(src, 'lxml')   
         products =soup.findAll(class_ = 'col-xs-12 col-md-8 col-lg-10 mt10')
@@ -98,23 +167,29 @@ def CheckExistFileName(filename,number_of_occurrences = 0):
 def FixBadCode():
     pagecount = 2
     dfproduct = pd.DataFrame(columns=['Code', 'label'])
-    dfBadCodes = CreateDictBadCodes(startinterval= 0, endinterval= 300)
+    startinterval = 0
+    endinterval= 2648
+    dfBadCodes = CreateDictBadCodes(startinterval= startinterval, endinterval= endinterval)
+    count = startinterval
     for badcode in dfBadCodes.itertuples():
+        count += 1
+        print (count)
+        GetDescrFromTnved_Info(badcode.id)
         # SavePage_on_Code(code=badcode.id, pagecount=pagecount)
-        ParsingHTMLFile(code=badcode.id, dfproduct=dfproduct, pagecount=pagecount)
+        # ParsingHTMLFile(code=badcode.id, dfproduct=dfproduct, pagecount=pagecount)
     
     # SavePage_on_Code(code='0802320000',pagecount=5)
-    ParsingHTMLFile(code='0802320000', dfproduct=dfproduct, pagecount=5)
+    # ParsingHTMLFile(code='0802320000', dfproduct=dfproduct, pagecount=5)
     # SavePage_on_Code(code='0802310000',pagecount=5)
-    ParsingHTMLFile(code='0802310000', dfproduct=dfproduct, pagecount=5)
+    # ParsingHTMLFile(code='0802310000', dfproduct=dfproduct, pagecount=5)
     
     filename = 'ParsedData.csv'
     filename = CheckExistFileName(filename)
     dfproduct.to_csv(filename,sep=';',index=False,header=False)
 
 
-# FixBadCode()
-SavePage_on_Code(code='5208330000', pagecount=2)
-        
+FixBadCode()
+# SavePage_on_Code(code='9102110000', pagecount=2)
+
 print('done')
 
